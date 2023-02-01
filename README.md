@@ -1,8 +1,8 @@
-# Puzzle Solver for Dungeons&Diagram from Last Call BBS
+# Puzzle Solver for Dungeons&Diagrams from Last Call BBS
 
 ## Introduction
 
-Dungeons&Diagram is the game about discrete tomography. This program can solve the puzzle in a relatively short time, but since solving this type of puzzles is NP problem, it will costs a lot of time to find a solution in some cases.
+Dungeons&Diagrams is the game about discrete tomography. This program can solve the puzzle in a relatively short time, but since solving this type of puzzles is NP problem, it will costs a lot of time to find a solution in some cases.
 
 ## Execution
 
