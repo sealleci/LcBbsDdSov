@@ -435,18 +435,16 @@ function isSolved(treasure_coords, monster_coords, diagram) {
         for (const monster_coord of monster_coords) {
             const x = monster_coord.x;
             const y = monster_coord.y;
-            switch (diagram[x][y]) {
-                case TileType.EMPTY_SPACE:
-                    if (isDeadEnds(x, y, diagram)) {
-                        return false;
-                    }
-                    break;
-                case TileType.MONSTER:
-                    if (!isDeadEnds(x, y, diagram)) {
-                        return false;
-                    }
-                    break;
-                default: break;
+            if (!isDeadEnds(x, y, diagram)) {
+                return false;
+            }
+        }
+        for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
+            for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
+                if (diagram[x][y] === TileType.EMPTY_SPACE &&
+                    isDeadEnds(x, y, diagram)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -465,25 +463,25 @@ function isSolved(treasure_coords, monster_coords, diagram) {
         return true;
     }
     const flag_connectivity = checkEmptySpacesConnectivity(diagram);
-    console.log(`@main> Check connectivity: ${flag_connectivity}.`);
     if (!flag_connectivity) {
         return false;
     }
     const [flag_treasures, treasure_room_lt_coords] = checkTreasureRooms(treasure_coords, diagram);
-    console.log(`@main> Check treasures: ${flag_treasures}.`);
     if (!flag_treasures) {
         return false;
     }
     const flag_monsters = checkMonstersAndDeadEnds();
-    console.log(`@main> Check monsters: ${flag_monsters}.`);
     if (!flag_monsters) {
         return false;
     }
     const falg_hallways = checkHallways(treasure_room_lt_coords);
-    console.log(`@main> Check hallways: ${falg_hallways}.`);
     if (!falg_hallways) {
         return false;
     }
+    console.log(`@main> Check connectivity: ${flag_connectivity}.`);
+    console.log(`@main> Check treasures: ${flag_treasures}.`);
+    console.log(`@main> Check monsters: ${flag_monsters}.`);
+    console.log(`@main> Check hallways: ${falg_hallways}.`);
     return true;
 }
 function getCombinations(m, n) {
