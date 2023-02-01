@@ -125,7 +125,7 @@ async function parseInputFile(file_name: string):
         const values = trimmed_line.split(/[ \f\t\v]+/).map(x => parseInt(x))
 
         if (values.length !== RAW_SIDE_LENGTH) {
-            console.log(`@main> File "${file_name}" has ${values.length} values less than ${RAW_SIDE_LENGTH} at line ${number_of_lines}.`)
+            console.log(`@main> File "${file_name}" has ${values.length} numbers ${values.length < RAW_SIDE_LENGTH ? 'less' : 'more'} than ${RAW_SIDE_LENGTH} at line ${number_of_lines}.`)
             return null
         }
 
@@ -140,7 +140,8 @@ async function parseInputFile(file_name: string):
                 row_projection[i] = values[i] as NumberOfTilesRange
             } else if (number_of_nonempty_lines === 2) {
                 column_projection[i] = values[i] as NumberOfTilesRange
-            } else {
+            } else if (number_of_nonempty_lines > 2 &&
+                number_of_nonempty_lines <= RAW_SIDE_LENGTH + 2) {
                 raw_diagram[number_of_nonempty_lines - 3][i] =
                     getTileType(values[i] as NumberOfTileTypeRange)
             }
@@ -148,7 +149,7 @@ async function parseInputFile(file_name: string):
     }
 
     if (number_of_nonempty_lines !== RAW_SIDE_LENGTH + 2) {
-        console.log(`@main> File "${file_name}" has ${number_of_nonempty_lines} non-empty lines less than ${RAW_SIDE_LENGTH + 2}.`)
+        console.log(`@main> File "${file_name}" has ${number_of_nonempty_lines} non-empty lines ${number_of_nonempty_lines < RAW_SIDE_LENGTH + 2 ? 'less' : 'more'} than ${RAW_SIDE_LENGTH + 2}.`)
         return null
     }
 
@@ -650,6 +651,10 @@ function dfs(step: number,
 
         lroom_loop:
         for (const lt_coord of getTRoomLTCoords(x, y)) {
+            if (!isTRoomLTCoordAvailable(lt_coord.x, lt_coord.y)) {
+                continue lroom_loop
+            }
+
             if (!isTRoomTilesAvailable(lt_coord.x, lt_coord.y, diagram)) {
                 continue lroom_loop
             }

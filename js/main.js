@@ -121,7 +121,7 @@ function parseInputFile(file_name) {
             number_of_nonempty_lines += 1;
             const values = trimmed_line.split(/[ \f\t\v]+/).map(x => parseInt(x));
             if (values.length !== RAW_SIDE_LENGTH) {
-                console.log(`@main> File "${file_name}" has ${values.length} values less than ${RAW_SIDE_LENGTH} at line ${number_of_lines}.`);
+                console.log(`@main> File "${file_name}" has ${values.length} numbers ${values.length < RAW_SIDE_LENGTH ? 'less' : 'more'} than ${RAW_SIDE_LENGTH} at line ${number_of_lines}.`);
                 return null;
             }
             for (let i = 0; i < values.length; i += 1) {
@@ -136,14 +136,15 @@ function parseInputFile(file_name) {
                 else if (number_of_nonempty_lines === 2) {
                     column_projection[i] = values[i];
                 }
-                else {
+                else if (number_of_nonempty_lines > 2 &&
+                    number_of_nonempty_lines <= RAW_SIDE_LENGTH + 2) {
                     raw_diagram[number_of_nonempty_lines - 3][i] =
                         getTileType(values[i]);
                 }
             }
         }
         if (number_of_nonempty_lines !== RAW_SIDE_LENGTH + 2) {
-            console.log(`@main> File "${file_name}" has ${number_of_nonempty_lines} non-empty lines less than ${RAW_SIDE_LENGTH + 2}.`);
+            console.log(`@main> File "${file_name}" has ${number_of_nonempty_lines} non-empty lines ${number_of_nonempty_lines < RAW_SIDE_LENGTH + 2 ? 'less' : 'more'} than ${RAW_SIDE_LENGTH + 2}.`);
             return null;
         }
         return [
@@ -521,6 +522,9 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
         }
         let is_satisfied = false;
         lroom_loop: for (const lt_coord of getTRoomLTCoords(x, y)) {
+            if (!isTRoomLTCoordAvailable(lt_coord.x, lt_coord.y)) {
+                continue lroom_loop;
+            }
             if (!isTRoomTilesAvailable(lt_coord.x, lt_coord.y, diagram)) {
                 continue lroom_loop;
             }
