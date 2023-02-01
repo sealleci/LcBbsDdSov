@@ -6,7 +6,7 @@ Dungeons&Diagrams is the game about discrete tomography. This program can solve 
 
 ## Execution
 
-Use command `npm run exec -- ${file_name}` to execute the program in the root directory, `${file_name}` should be replaced with a file name (such as `text.txt`) which is located in the `/input` directory.
+Use command `npm run exec -- ${file_name}` to execute the program in the root directory, `${file_name}` should be replaced with a file name (such as `test.txt`) which is located in the `/input` directory.
 
 ## Input file
 
