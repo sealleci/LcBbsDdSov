@@ -108,8 +108,8 @@ function parseInputFile(file_name) {
             return null;
         }
         const raw_diagram = duplicate(new Array(RAW_SIDE_LENGTH).fill(TileType.EMPTY_SPACE), RAW_SIDE_LENGTH);
-        const row_indicator = new Array(RAW_SIDE_LENGTH).fill(0);
-        const column_indicator = new Array(RAW_SIDE_LENGTH).fill(0);
+        const row_projection = new Array(RAW_SIDE_LENGTH).fill(0);
+        const column_projection = new Array(RAW_SIDE_LENGTH).fill(0);
         let number_of_lines = 0;
         let number_of_nonempty_lines = 0;
         for (const line of lines) {
@@ -131,10 +131,10 @@ function parseInputFile(file_name) {
                     return null;
                 }
                 if (number_of_nonempty_lines === 1) {
-                    row_indicator[i] = values[i];
+                    row_projection[i] = values[i];
                 }
                 else if (number_of_nonempty_lines === 2) {
-                    column_indicator[i] = values[i];
+                    column_projection[i] = values[i];
                 }
                 else {
                     raw_diagram[number_of_nonempty_lines - 3][i] =
@@ -147,8 +147,8 @@ function parseInputFile(file_name) {
             return null;
         }
         return [
-            row_indicator,
-            column_indicator,
+            row_projection,
+            column_projection,
             raw_diagram
         ];
     });
@@ -192,29 +192,29 @@ function getAsciiDiagram(diagram, is_render_all = false) {
     }
     return result.join('\n');
 }
-function isTilePlacable(row_i, column_i, cur_row_indicator, cur_column_indicator, row_indicator, column_indicator) {
-    if (!(row_i in cur_row_indicator && row_i in row_indicator &&
-        column_i in cur_column_indicator && column_i in column_indicator)) {
+function isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection) {
+    if (!(row_i in cur_row_projection && row_i in row_projection &&
+        column_i in cur_column_projection && column_i in column_projection)) {
         return false;
     }
-    return cur_row_indicator[row_i] + 1 <= row_indicator[row_i] &&
-        cur_column_indicator[column_i] + 1 <= column_indicator[column_i];
+    return cur_row_projection[row_i] + 1 <= row_projection[row_i] &&
+        cur_column_projection[column_i] + 1 <= column_projection[column_i];
 }
 function getHashId(x, y) {
     return x * 100 + y;
 }
-function isSatisfiedIndicators(cur_row_indicator, cur_column_indicator, row_indicator, column_indicator) {
-    if (!(cur_row_indicator.length === row_indicator.length &&
-        cur_column_indicator.length === column_indicator.length)) {
+function isSatisfiedProjections(cur_row_projection, cur_column_projection, row_projection, column_projection) {
+    if (!(cur_row_projection.length === row_projection.length &&
+        cur_column_projection.length === column_projection.length)) {
         return false;
     }
-    for (let i = 0; i < cur_row_indicator.length; i += 1) {
-        if (cur_row_indicator[i] !== row_indicator[i]) {
+    for (let i = 0; i < cur_row_projection.length; i += 1) {
+        if (cur_row_projection[i] !== row_projection[i]) {
             return false;
         }
     }
-    for (let i = 0; i < cur_column_indicator.length; i += 1) {
-        if (cur_column_indicator[i] !== column_indicator[i]) {
+    for (let i = 0; i < cur_column_projection.length; i += 1) {
+        if (cur_column_projection[i] !== column_projection[i]) {
             return false;
         }
     }
@@ -507,8 +507,8 @@ function getCombinations(m, n) {
     })(0, []);
     return result;
 }
-function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_indicator, column_indicator, treasure_coords, monster_coords) {
-    if (isSatisfiedIndicators(cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords) {
+    if (isSatisfiedProjections(cur_row_projection, cur_column_projection, row_projection, column_projection)) {
         return isSolved(treasure_coords, monster_coords, diagram);
     }
     for (const treasure_coord of treasure_coords) {
@@ -542,12 +542,12 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                         if (j !== i) {
                             const row_i = empty_space_coords[j].x - 1;
                             const column_i = empty_space_coords[j].y - 1;
-                            if (!isTilePlacable(row_i, column_i, cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+                            if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
                                 break;
                             }
                             diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
-                            cur_row_indicator[row_i] += 1;
-                            cur_column_indicator[column_i] += 1;
+                            cur_row_projection[row_i] += 1;
+                            cur_column_projection[column_i] += 1;
                             placed_indices.push(j);
                         }
                     }
@@ -556,7 +556,7 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                         is_satisfied = true;
                         handled_treasure_ids.push(hash_id);
                         treasure_room_lt_coords.push(lt_coord);
-                        if (dfs(step + 1, cur_row_indicator, cur_column_indicator, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_indicator, column_indicator, treasure_coords, monster_coords)) {
+                        if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
                             return true;
                         }
                         handled_treasure_ids.pop();
@@ -564,8 +564,8 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                     }
                     for (let k = 0; k < placed_indices.length; k += 1) {
                         diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
-                        cur_row_indicator[empty_space_coords[placed_indices[k]].x - 1] -= 1;
-                        cur_column_indicator[empty_space_coords[placed_indices[k]].y - 1] -= 1;
+                        cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
+                        cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
                     }
                 }
             }
@@ -610,12 +610,12 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                     if (j !== i) {
                         const row_i = empty_space_coords[j].x - 1;
                         const column_i = empty_space_coords[j].y - 1;
-                        if (!isTilePlacable(row_i, column_i, cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+                        if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
                             break;
                         }
                         diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
-                        cur_row_indicator[row_i] += 1;
-                        cur_column_indicator[column_i] += 1;
+                        cur_row_projection[row_i] += 1;
+                        cur_column_projection[column_i] += 1;
                         placed_indices.push(j);
                     }
                 }
@@ -623,15 +623,15 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                     checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
                     is_satisfied = true;
                     handled_monster_ids.push(hash_id);
-                    if (dfs(step + 1, cur_row_indicator, cur_column_indicator, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_indicator, column_indicator, treasure_coords, monster_coords)) {
+                    if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
                         return true;
                     }
                     handled_monster_ids.pop();
                 }
                 for (let k = 0; k < placed_indices.length; k += 1) {
                     diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
-                    cur_row_indicator[empty_space_coords[placed_indices[k]].x - 1] -= 1;
-                    cur_column_indicator[empty_space_coords[placed_indices[k]].y - 1] -= 1;
+                    cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
+                    cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
                 }
             }
         }
@@ -642,34 +642,34 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
     if (handled_monster_ids.length !== monster_coords.length) {
         return false;
     }
-    for (let row_i = 0; row_i < cur_row_indicator.length; row_i += 1) {
-        const difference = row_indicator[row_i] - cur_row_indicator[row_i];
+    for (let row_i = 0; row_i < cur_row_projection.length; row_i += 1) {
+        const difference = row_projection[row_i] - cur_row_projection[row_i];
         if (difference <= 0) {
             continue;
         }
         const available_coords = [];
-        for (let column_i = 0; column_i < cur_column_indicator.length; column_i += 1) {
-            if (cur_column_indicator[column_i] >= column_indicator[column_i]) {
+        for (let column_i = 0; column_i < cur_column_projection.length; column_i += 1) {
+            if (cur_column_projection[column_i] >= column_projection[column_i]) {
                 continue;
             }
             const x = row_i + 1;
             const y = column_i + 1;
             if (!(diagram[x][y] === TileType.EMPTY_SPACE &&
                 !isContainedByTRoom(x, y, treasure_room_lt_coords) &&
-                isTilePlacable(row_i, column_i, cur_row_indicator, cur_column_indicator, row_indicator, column_indicator))) {
+                isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection))) {
                 continue;
             }
             diagram[x][y] = TileType.WALL;
-            cur_row_indicator[row_i] += 1;
-            cur_column_indicator[column_i] += 1;
+            cur_row_projection[row_i] += 1;
+            cur_column_projection[column_i] += 1;
             if (checkTreasureRooms(treasure_coords, diagram) &&
                 checkMonsters(monster_coords, diagram) &&
                 checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
                 available_coords.push({ x: x, y: y });
             }
             diagram[x][y] = TileType.EMPTY_SPACE;
-            cur_row_indicator[row_i] -= 1;
-            cur_column_indicator[column_i] -= 1;
+            cur_row_projection[row_i] -= 1;
+            cur_column_projection[column_i] -= 1;
         }
         if (available_coords.length < difference) {
             return false;
@@ -680,14 +680,14 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                 const x = available_coords[index].x;
                 const y = available_coords[index].y;
                 diagram[x][y] = TileType.WALL;
-                cur_row_indicator[x - 1] += 1;
-                cur_column_indicator[y - 1] += 1;
+                cur_row_projection[x - 1] += 1;
+                cur_column_projection[y - 1] += 1;
             }
             if (checkTreasureRooms(treasure_coords, diagram) &&
                 checkMonsters(monster_coords, diagram) &&
                 checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
                 is_satisfied = true;
-                if (dfs(step + 1, cur_row_indicator, cur_column_indicator, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_indicator, column_indicator, treasure_coords, monster_coords)) {
+                if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
                     return true;
                 }
             }
@@ -695,8 +695,8 @@ function dfs(step, cur_row_indicator, cur_column_indicator, handled_treasure_ids
                 const x = available_coords[index].x;
                 const y = available_coords[index].y;
                 diagram[x][y] = TileType.EMPTY_SPACE;
-                cur_row_indicator[x - 1] -= 1;
-                cur_column_indicator[y - 1] -= 1;
+                cur_row_projection[x - 1] -= 1;
+                cur_column_projection[y - 1] -= 1;
             }
         }
         if (!is_satisfied) {
@@ -742,13 +742,13 @@ function getFormattedTime(ms) {
         console.log(`@main> Failed to parse file "${file_name}".`);
         return;
     }
-    const [row_indicator, column_indicator, raw_diagram] = parsing_result;
+    const [row_projection, column_projection, raw_diagram] = parsing_result;
     const diagram = augmentRawDiagram(raw_diagram);
     const [treasure_coords, monster_coords] = getTreasureAndMonsterCoords(diagram);
-    const cur_row_indicator = [0, 0, 0, 0, 0, 0, 0, 0];
-    const cur_column_indicator = [0, 0, 0, 0, 0, 0, 0, 0];
+    const cur_row_projection = [0, 0, 0, 0, 0, 0, 0, 0];
+    const cur_column_projection = [0, 0, 0, 0, 0, 0, 0, 0];
     const start_time = (new Date()).getTime();
-    if (!dfs(0, cur_row_indicator, cur_column_indicator, [], [], [], diagram, row_indicator, column_indicator, treasure_coords, monster_coords)) {
+    if (!dfs(0, cur_row_projection, cur_column_projection, [], [], [], diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
         console.log(`@main> (${getFormattedTime(getElapsedTime(start_time))}) Failed to find a solution.`);
         return;
     }

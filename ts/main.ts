@@ -30,8 +30,8 @@ type RawDiagram = Tuple<Tuple<TileType, typeof RAW_SIDE_LENGTH>, typeof RAW_SIDE
 type DiagramRow = MutableTuple<TileType, typeof SIDE_LENGTH>
 type Diagram = MutableTuple<DiagramRow, typeof SIDE_LENGTH>
 type NumberOfTilesRange = NumberRange<0, typeof RAW_SIDE_LENGTH_PLUS>
-type Indicator = Tuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
-type MutableIndicator = MutableTuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
+type Projection = Tuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
+type MutableProjection = MutableTuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
 type ColorSet = Dictionary<number, number>
 
 function duplicate<T>(value: T, length: number): T[] {
@@ -96,7 +96,7 @@ function writeOutputFile(file_name: string, content: string) {
 }
 
 async function parseInputFile(file_name: string):
-    Promise<readonly [Indicator, Indicator, RawDiagram] | null> {
+    Promise<readonly [Projection, Projection, RawDiagram] | null> {
     const lines = await readInputFile(file_name)
 
     if (lines === null) {
@@ -106,8 +106,8 @@ async function parseInputFile(file_name: string):
     const raw_diagram = duplicate(
         new Array<TileType>(RAW_SIDE_LENGTH).fill(TileType.EMPTY_SPACE),
         RAW_SIDE_LENGTH)
-    const row_indicator = new Array<NumberOfTilesRange>(RAW_SIDE_LENGTH).fill(0)
-    const column_indicator = new Array<NumberOfTilesRange>(RAW_SIDE_LENGTH).fill(0)
+    const row_projection = new Array<NumberOfTilesRange>(RAW_SIDE_LENGTH).fill(0)
+    const column_projection = new Array<NumberOfTilesRange>(RAW_SIDE_LENGTH).fill(0)
     let number_of_lines = 0
     let number_of_nonempty_lines = 0
 
@@ -137,9 +137,9 @@ async function parseInputFile(file_name: string):
             }
 
             if (number_of_nonempty_lines === 1) {
-                row_indicator[i] = values[i] as NumberOfTilesRange
+                row_projection[i] = values[i] as NumberOfTilesRange
             } else if (number_of_nonempty_lines === 2) {
-                column_indicator[i] = values[i] as NumberOfTilesRange
+                column_projection[i] = values[i] as NumberOfTilesRange
             } else {
                 raw_diagram[number_of_nonempty_lines - 3][i] =
                     getTileType(values[i] as NumberOfTileTypeRange)
@@ -153,8 +153,8 @@ async function parseInputFile(file_name: string):
     }
 
     return [
-        row_indicator as unknown as Indicator,
-        column_indicator as unknown as Indicator,
+        row_projection as unknown as Projection,
+        column_projection as unknown as Projection,
         raw_diagram as unknown as RawDiagram
     ]
 }
@@ -209,37 +209,37 @@ function getAsciiDiagram(diagram: Diagram, is_render_all: boolean = false): stri
 }
 
 function isTilePlacable(row_i: number, column_i: number,
-    cur_row_indicator: Indicator, cur_column_indicator: Indicator,
-    row_indicator: Indicator, column_indicator: Indicator): boolean {
+    cur_row_projection: Projection, cur_column_projection: Projection,
+    row_projection: Projection, column_projection: Projection): boolean {
 
-    if (!(row_i in cur_row_indicator && row_i in row_indicator &&
-        column_i in cur_column_indicator && column_i in column_indicator)) {
+    if (!(row_i in cur_row_projection && row_i in row_projection &&
+        column_i in cur_column_projection && column_i in column_projection)) {
         return false
     }
 
-    return cur_row_indicator[row_i] + 1 <= row_indicator[row_i] &&
-        cur_column_indicator[column_i] + 1 <= column_indicator[column_i]
+    return cur_row_projection[row_i] + 1 <= row_projection[row_i] &&
+        cur_column_projection[column_i] + 1 <= column_projection[column_i]
 }
 
 function getHashId(x: number, y: number): number {
     return x * 100 + y
 }
 
-function isSatisfiedIndicators(cur_row_indicator: Indicator, cur_column_indicator: Indicator,
-    row_indicator: Indicator, column_indicator: Indicator): boolean {
-    if (!(cur_row_indicator.length === row_indicator.length &&
-        cur_column_indicator.length === column_indicator.length)) {
+function isSatisfiedProjections(cur_row_projection: Projection, cur_column_projection: Projection,
+    row_projection: Projection, column_projection: Projection): boolean {
+    if (!(cur_row_projection.length === row_projection.length &&
+        cur_column_projection.length === column_projection.length)) {
         return false
     }
 
-    for (let i = 0; i < cur_row_indicator.length; i += 1) {
-        if (cur_row_indicator[i] !== row_indicator[i]) {
+    for (let i = 0; i < cur_row_projection.length; i += 1) {
+        if (cur_row_projection[i] !== row_projection[i]) {
             return false
         }
     }
 
-    for (let i = 0; i < cur_column_indicator.length; i += 1) {
-        if (cur_column_indicator[i] !== column_indicator[i]) {
+    for (let i = 0; i < cur_column_projection.length; i += 1) {
+        if (cur_column_projection[i] !== column_projection[i]) {
             return false
         }
     }
@@ -625,13 +625,13 @@ function getCombinations(m: number, n: number): number[][] {
 }
 
 function dfs(step: number,
-    cur_row_indicator: MutableIndicator, cur_column_indicator: MutableIndicator,
+    cur_row_projection: MutableProjection, cur_column_projection: MutableProjection,
     handled_treasure_ids: number[], handled_monster_ids: number[],
     treasure_room_lt_coords: Coordinate[],
     diagram: Diagram,
-    row_indicator: Indicator, column_indicator: Indicator,
+    row_projection: Projection, column_projection: Projection,
     treasure_coords: readonly Coordinate[], monster_coords: readonly Coordinate[]): boolean {
-    if (isSatisfiedIndicators(cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+    if (isSatisfiedProjections(cur_row_projection, cur_column_projection, row_projection, column_projection)) {
         return isSolved(treasure_coords, monster_coords, diagram)
     }
 
@@ -676,13 +676,13 @@ function dfs(step: number,
                             const column_i = empty_space_coords[j].y - 1
 
                             if (!isTilePlacable(row_i, column_i,
-                                cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+                                cur_row_projection, cur_column_projection, row_projection, column_projection)) {
                                 break
                             }
 
                             diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
-                            cur_row_indicator[row_i] += 1
-                            cur_column_indicator[column_i] += 1
+                            cur_row_projection[row_i] += 1
+                            cur_column_projection[column_i] += 1
                             placed_indices.push(j)
                         }
                     }
@@ -693,10 +693,10 @@ function dfs(step: number,
                         handled_treasure_ids.push(hash_id)
                         treasure_room_lt_coords.push(lt_coord)
 
-                        if (dfs(step + 1, cur_row_indicator, cur_column_indicator,
+                        if (dfs(step + 1, cur_row_projection, cur_column_projection,
                             handled_treasure_ids, handled_monster_ids,
                             treasure_room_lt_coords,
-                            diagram, row_indicator, column_indicator,
+                            diagram, row_projection, column_projection,
                             treasure_coords, monster_coords)) {
                             return true
                         }
@@ -710,9 +710,9 @@ function dfs(step: number,
                             empty_space_coords[placed_indices[k]].x
                         ][
                             empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE
-                        cur_row_indicator[
+                        cur_row_projection[
                             empty_space_coords[placed_indices[k]].x - 1] -= 1
-                        cur_column_indicator[
+                        cur_column_projection[
                             empty_space_coords[placed_indices[k]].y - 1] -= 1
                     }
                 }
@@ -768,13 +768,13 @@ function dfs(step: number,
                         const column_i = empty_space_coords[j].y - 1
 
                         if (!isTilePlacable(row_i, column_i,
-                            cur_row_indicator, cur_column_indicator, row_indicator, column_indicator)) {
+                            cur_row_projection, cur_column_projection, row_projection, column_projection)) {
                             break
                         }
 
                         diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
-                        cur_row_indicator[row_i] += 1
-                        cur_column_indicator[column_i] += 1
+                        cur_row_projection[row_i] += 1
+                        cur_column_projection[column_i] += 1
                         placed_indices.push(j)
                     }
                 }
@@ -784,10 +784,10 @@ function dfs(step: number,
                     is_satisfied = true
                     handled_monster_ids.push(hash_id)
 
-                    if (dfs(step + 1, cur_row_indicator, cur_column_indicator,
+                    if (dfs(step + 1, cur_row_projection, cur_column_projection,
                         handled_treasure_ids, handled_monster_ids,
                         treasure_room_lt_coords,
-                        diagram, row_indicator, column_indicator,
+                        diagram, row_projection, column_projection,
                         treasure_coords, monster_coords)) {
                         return true
                     }
@@ -800,9 +800,9 @@ function dfs(step: number,
                         empty_space_coords[placed_indices[k]].x
                     ][
                         empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE
-                    cur_row_indicator[
+                    cur_row_projection[
                         empty_space_coords[placed_indices[k]].x - 1] -= 1
-                    cur_column_indicator[
+                    cur_column_projection[
                         empty_space_coords[placed_indices[k]].y - 1] -= 1
                 }
             }
@@ -818,8 +818,8 @@ function dfs(step: number,
     }
 
     // Enumerate empty spaces
-    for (let row_i = 0; row_i < cur_row_indicator.length; row_i += 1) {
-        const difference = row_indicator[row_i] - cur_row_indicator[row_i]
+    for (let row_i = 0; row_i < cur_row_projection.length; row_i += 1) {
+        const difference = row_projection[row_i] - cur_row_projection[row_i]
 
         if (difference <= 0) {
             continue
@@ -827,8 +827,8 @@ function dfs(step: number,
 
         const available_coords: Coordinate[] = []
 
-        for (let column_i = 0; column_i < cur_column_indicator.length; column_i += 1) {
-            if (cur_column_indicator[column_i] >= column_indicator[column_i]) {
+        for (let column_i = 0; column_i < cur_column_projection.length; column_i += 1) {
+            if (cur_column_projection[column_i] >= column_projection[column_i]) {
                 continue
             }
 
@@ -837,14 +837,14 @@ function dfs(step: number,
 
             if (!(diagram[x][y] === TileType.EMPTY_SPACE &&
                 !isContainedByTRoom(x, y, treasure_room_lt_coords) &&
-                isTilePlacable(row_i, column_i, cur_row_indicator, cur_column_indicator,
-                    row_indicator, column_indicator))) {
+                isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection,
+                    row_projection, column_projection))) {
                 continue
             }
 
             diagram[x][y] = TileType.WALL
-            cur_row_indicator[row_i] += 1
-            cur_column_indicator[column_i] += 1
+            cur_row_projection[row_i] += 1
+            cur_column_projection[column_i] += 1
 
             if (checkTreasureRooms(treasure_coords, diagram) &&
                 checkMonsters(monster_coords, diagram) &&
@@ -853,8 +853,8 @@ function dfs(step: number,
             }
 
             diagram[x][y] = TileType.EMPTY_SPACE
-            cur_row_indicator[row_i] -= 1
-            cur_column_indicator[column_i] -= 1
+            cur_row_projection[row_i] -= 1
+            cur_column_projection[column_i] -= 1
         }
 
         if (available_coords.length < difference) {
@@ -869,18 +869,18 @@ function dfs(step: number,
                 const y = available_coords[index].y
 
                 diagram[x][y] = TileType.WALL
-                cur_row_indicator[x - 1] += 1
-                cur_column_indicator[y - 1] += 1
+                cur_row_projection[x - 1] += 1
+                cur_column_projection[y - 1] += 1
             }
 
             if (checkTreasureRooms(treasure_coords, diagram) &&
                 checkMonsters(monster_coords, diagram) &&
                 checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
                 is_satisfied = true
-                if (dfs(step + 1, cur_row_indicator, cur_column_indicator,
+                if (dfs(step + 1, cur_row_projection, cur_column_projection,
                     handled_treasure_ids, handled_monster_ids,
                     treasure_room_lt_coords,
-                    diagram, row_indicator, column_indicator,
+                    diagram, row_projection, column_projection,
                     treasure_coords, monster_coords)) {
                     return true
                 }
@@ -891,8 +891,8 @@ function dfs(step: number,
                 const y = available_coords[index].y
 
                 diagram[x][y] = TileType.EMPTY_SPACE
-                cur_row_indicator[x - 1] -= 1
-                cur_column_indicator[y - 1] -= 1
+                cur_row_projection[x - 1] -= 1
+                cur_column_projection[y - 1] -= 1
             }
         }
 
@@ -948,16 +948,16 @@ function getFormattedTime(ms: number): string {
         return
     }
 
-    const [row_indicator, column_indicator, raw_diagram] = parsing_result
+    const [row_projection, column_projection, raw_diagram] = parsing_result
     const diagram = augmentRawDiagram(raw_diagram)
     const [treasure_coords, monster_coords] = getTreasureAndMonsterCoords(diagram)
-    const cur_row_indicator: MutableIndicator = [0, 0, 0, 0, 0, 0, 0, 0]
-    const cur_column_indicator: MutableIndicator = [0, 0, 0, 0, 0, 0, 0, 0]
+    const cur_row_projection: MutableProjection = [0, 0, 0, 0, 0, 0, 0, 0]
+    const cur_column_projection: MutableProjection = [0, 0, 0, 0, 0, 0, 0, 0]
     const start_time = (new Date()).getTime()
 
-    if (!dfs(0, cur_row_indicator, cur_column_indicator,
+    if (!dfs(0, cur_row_projection, cur_column_projection,
         [], [], [],
-        diagram, row_indicator, column_indicator,
+        diagram, row_projection, column_projection,
         treasure_coords, monster_coords)) {
         console.log(`@main> (${getFormattedTime(getElapsedTime(start_time))}) Failed to find a solution.`)
         return
