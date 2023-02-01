@@ -1,0 +1,15 @@
+{
+    "name": "lcbbs_dd_sov",
+    "version": "0.0.1",
+    "description": "A program for sovling the puzzles for Dugeons & Diagrams from Last Call BBS.",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "exec": "node --experimental-modules ./js/main.js"
+    },
+    "author": "sealleci",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^18.11.2"
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "module": "Node16",
+        "target": "ES6",
+        "strict": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "pretty": true,
+        "declaration": false,
+        "noEmitOnError": true,
+        "noErrorTruncation": true,
+        // "declarationDir": "./js",
+        "outDir": "./js",
+        "sourceMap": false,
+        "baseUrl": ".",
+        "paths": {
+            "*": [
+                "node_modules/*"
+            ]
+        }
+    },
+    "include": [
+        "./ts/**/*"
+    ]
+}
