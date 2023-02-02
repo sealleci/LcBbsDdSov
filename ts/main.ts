@@ -34,6 +34,11 @@ type Projection = Tuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
 type MutableProjection = MutableTuple<NumberOfTilesRange, typeof RAW_SIDE_LENGTH>
 type ColorSet = Dictionary<number, number>
 
+interface Coordinate {
+    x: number
+    y: number
+}
+
 function duplicate<T>(value: T, length: number): T[] {
     const array = new Array<T>(length)
 
@@ -519,54 +524,51 @@ function checkTreasureRooms(treasure_coords: readonly Coordinate[], diagram: Dia
     return [true, treasure_room_lt_coords]
 }
 
-interface Coordinate {
-    x: number
-    y: number
+function checkMonstersAndDeadEnds(monster_coords: readonly Coordinate[], diagram: Diagram): boolean {
+    for (const monster_coord of monster_coords) {
+        const x = monster_coord.x;
+        const y = monster_coord.y;
+
+        if (!isDeadEnds(x, y, diagram)) {
+            return false;
+        }
+    }
+
+    for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
+        for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
+            if (diagram[x][y] === TileType.EMPTY_SPACE &&
+                isDeadEnds(x, y, diagram)) {
+                return false
+            }
+        }
+    }
+
+    return true
+}
+
+function checkHallways(treasure_room_lt_coords: readonly Coordinate[], diagram: Diagram): boolean {
+    for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
+        for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
+            if (!(diagram[x][y] === TileType.EMPTY_SPACE &&
+                !isContainedByTRoom(x, y, treasure_room_lt_coords))) {
+                continue
+            }
+
+            if (get4TilesSpaces(x, y).map(
+                space => space.map(
+                    coord => diagram[coord.x][coord.y] === TileType.EMPTY_SPACE &&
+                        !isContainedByTRoom(coord.x, coord.y, treasure_room_lt_coords) ? 1 : 0 as number
+                ).reduce((pre, cur) => pre + cur, 0) >= 3 ? 1 : 0 as number
+            ).reduce((pre, cur) => pre + cur, 0) > 0) {
+                return false
+            }
+        }
+    }
+
+    return true
 }
 
 function isSolved(treasure_coords: readonly Coordinate[], monster_coords: readonly Coordinate[], diagram: Diagram): boolean {
-    function checkMonstersAndDeadEnds(): boolean {
-        for (const monster_coord of monster_coords) {
-            const x = monster_coord.x;
-            const y = monster_coord.y;
-
-            if (!isDeadEnds(x, y, diagram)) {
-                return false;
-            }
-        }
-
-        for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
-            for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
-                if (diagram[x][y] === TileType.EMPTY_SPACE &&
-                    isDeadEnds(x, y, diagram)) {
-                    return false
-                }
-            }
-        }
-
-        return true
-    }
-
-    function checkHallways(treasure_room_lt_coords: readonly Coordinate[]): boolean {
-        for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
-            for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
-                if (diagram[x][y] === TileType.EMPTY_SPACE &&
-                    !isContainedByTRoom(x, y, treasure_room_lt_coords)) {
-                    if (get4TilesSpaces(x, y).map(
-                        space => space.map(
-                            coord => diagram[coord.x][coord.y] === TileType.EMPTY_SPACE && !isContainedByTRoom(
-                                coord.x, coord.y, treasure_room_lt_coords) ? 1 : 0 as number
-                        ).reduce((pre, cur) => pre + cur, 0) >= 3 ? 1 : 0 as number
-                    ).reduce((pre, cur) => pre + cur, 0) > 0) {
-                        return false
-                    }
-                }
-            }
-        }
-
-        return true
-    }
-
     const flag_connectivity = checkEmptySpacesConnectivity(diagram)
     if (!flag_connectivity) {
         return false
@@ -578,12 +580,12 @@ function isSolved(treasure_coords: readonly Coordinate[], monster_coords: readon
         return false
     }
 
-    const flag_monsters = checkMonstersAndDeadEnds()
+    const flag_monsters = checkMonstersAndDeadEnds(monster_coords, diagram)
     if (!flag_monsters) {
         return false
     }
 
-    const falg_hallways = checkHallways(treasure_room_lt_coords)
+    const falg_hallways = checkHallways(treasure_room_lt_coords, diagram)
     if (!falg_hallways) {
         return false
     }
@@ -620,7 +622,7 @@ function getCombinations(m: number, n: number): number[][] {
         if (cur_combination.length + (n - 1 - step) >= m) {
             recursiveSelect(step + 1, cur_combination)
         }
-    })(0, [])
+    })(0, []);
 
     return result
 }
@@ -674,20 +676,23 @@ function dfs(step: number,
                     let placed_indices: number[] = []
 
                     for (let j = 0; j < empty_space_coords.length; j += 1) {
-                        if (j !== i) {
-                            const row_i = empty_space_coords[j].x - 1
-                            const column_i = empty_space_coords[j].y - 1
-
-                            if (!isTilePlacable(row_i, column_i,
-                                cur_row_projection, cur_column_projection, row_projection, column_projection)) {
-                                break
-                            }
-
-                            diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
-                            cur_row_projection[row_i] += 1
-                            cur_column_projection[column_i] += 1
-                            placed_indices.push(j)
+                        if (j === i) {
+                            continue
                         }
+
+                        const row_i = empty_space_coords[j].x - 1
+                        const column_i = empty_space_coords[j].y - 1
+
+                        if (!isTilePlacable(row_i, column_i,
+                            cur_row_projection, cur_column_projection,
+                            row_projection, column_projection)) {
+                            break
+                        }
+
+                        diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
+                        cur_row_projection[row_i] += 1
+                        cur_column_projection[column_i] += 1
+                        placed_indices.push(j)
                     }
 
                     if (placed_indices.length === empty_space_coords.length - 1 &&
@@ -757,52 +762,54 @@ function dfs(step: number,
 
         if (number_of_walls >= 4) {
             return false
-        } else {
-            for (let i = 0; i < empty_space_coords.length; i += 1) {
-                let placed_indices: number[] = []
+        }
 
-                for (let j = 0; j < empty_space_coords.length; j += 1) {
-                    if (j !== i) {
-                        const row_i = empty_space_coords[j].x - 1
-                        const column_i = empty_space_coords[j].y - 1
+        for (let i = 0; i < empty_space_coords.length; i += 1) {
+            let placed_indices: number[] = []
 
-                        if (!isTilePlacable(row_i, column_i,
-                            cur_row_projection, cur_column_projection, row_projection, column_projection)) {
-                            break
-                        }
-
-                        diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
-                        cur_row_projection[row_i] += 1
-                        cur_column_projection[column_i] += 1
-                        placed_indices.push(j)
-                    }
+            for (let j = 0; j < empty_space_coords.length; j += 1) {
+                if (j === i) {
+                    continue
                 }
 
-                if (placed_indices.length === empty_space_coords.length - 1 &&
-                    checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                    handled_monster_ids.push(hash_id)
+                const row_i = empty_space_coords[j].x - 1
+                const column_i = empty_space_coords[j].y - 1
 
-                    if (dfs(step + 1, cur_row_projection, cur_column_projection,
-                        handled_treasure_ids, handled_monster_ids,
-                        treasure_room_lt_coords,
-                        diagram, row_projection, column_projection,
-                        treasure_coords, monster_coords)) {
-                        return true
-                    }
-
-                    handled_monster_ids.pop()
+                if (!isTilePlacable(row_i, column_i,
+                    cur_row_projection, cur_column_projection, row_projection, column_projection)) {
+                    break
                 }
 
-                for (let k = 0; k < placed_indices.length; k += 1) {
-                    diagram[
-                        empty_space_coords[placed_indices[k]].x
-                    ][
-                        empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE
-                    cur_row_projection[
-                        empty_space_coords[placed_indices[k]].x - 1] -= 1
-                    cur_column_projection[
-                        empty_space_coords[placed_indices[k]].y - 1] -= 1
+                diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL
+                cur_row_projection[row_i] += 1
+                cur_column_projection[column_i] += 1
+                placed_indices.push(j)
+            }
+
+            if (placed_indices.length === empty_space_coords.length - 1 &&
+                checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
+                handled_monster_ids.push(hash_id)
+
+                if (dfs(step + 1, cur_row_projection, cur_column_projection,
+                    handled_treasure_ids, handled_monster_ids,
+                    treasure_room_lt_coords,
+                    diagram, row_projection, column_projection,
+                    treasure_coords, monster_coords)) {
+                    return true
                 }
+
+                handled_monster_ids.pop()
+            }
+
+            for (let k = 0; k < placed_indices.length; k += 1) {
+                diagram[
+                    empty_space_coords[placed_indices[k]].x
+                ][
+                    empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE
+                cur_row_projection[
+                    empty_space_coords[placed_indices[k]].x - 1] -= 1
+                cur_column_projection[
+                    empty_space_coords[placed_indices[k]].y - 1] -= 1
             }
         }
 
@@ -856,7 +863,6 @@ function dfs(step: number,
         if (available_coords.length < difference) {
             return false
         }
-
 
         for (const combination of getCombinations(difference, available_coords.length)) {
             for (const index of combination) {
