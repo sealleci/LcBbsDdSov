@@ -320,7 +320,7 @@ function checkEmptySpacesConnectivity(diagram) {
             }
             color_set[hash_id] = sign;
             for (const coord of get4DirectionCoords(head.x, head.y)) {
-                if (diagram[coord.x][coord.y] === TileType.EMPTY_SPACE &&
+                if (diagram[coord.x][coord.y] !== TileType.WALL &&
                     !(getHashId(coord.x, coord.y) in color_set)) {
                     queue.push(coord);
                 }
@@ -330,7 +330,7 @@ function checkEmptySpacesConnectivity(diagram) {
     for (let x = 1; x < SIDE_LENGTH - 1; x += 1) {
         for (let y = 1; y < SIDE_LENGTH - 1; y += 1) {
             const hash_id = getHashId(x, y);
-            if (diagram[x][y] === TileType.EMPTY_SPACE) {
+            if (diagram[x][y] !== TileType.WALL) {
                 if (hash_id in color_set) {
                     if (sign_count <= 1) {
                         continue;
@@ -518,7 +518,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
             !handled_treasure_ids.includes(hash_id))) {
             continue;
         }
-        let is_satisfied = false;
         lroom_loop: for (const lt_coord of getTRoomLTCoords(x, y)) {
             if (!isTRoomLTCoordAvailable(lt_coord.x, lt_coord.y)) {
                 continue lroom_loop;
@@ -555,7 +554,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
                     }
                     if (placed_indices.length === empty_space_coords.length - 1 &&
                         checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                        is_satisfied = true;
                         handled_treasure_ids.push(hash_id);
                         treasure_room_lt_coords.push(lt_coord);
                         if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
@@ -572,9 +570,7 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
                 }
             }
         }
-        if (!is_satisfied) {
-            return false;
-        }
+        return false;
     }
     if (handled_treasure_ids.length !== treasure_coords.length) {
         return false;
@@ -590,7 +586,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
         const outer_tile_coords = get4DirectionCoords(x, y);
         const empty_space_coords = outer_tile_coords.filter(tile => diagram[tile.x][tile.y] === TileType.EMPTY_SPACE);
         let number_of_walls = 0;
-        let is_satisfied = false;
         for (const tile_coord of outer_tile_coords) {
             switch (diagram[tile_coord.x][tile_coord.y]) {
                 case TileType.EMPTY_SPACE:
@@ -623,7 +618,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
                 }
                 if (placed_indices.length === empty_space_coords.length - 1 &&
                     checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                    is_satisfied = true;
                     handled_monster_ids.push(hash_id);
                     if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
                         return true;
@@ -637,9 +631,7 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
                 }
             }
         }
-        if (!is_satisfied) {
-            return false;
-        }
+        return false;
     }
     if (handled_monster_ids.length !== monster_coords.length) {
         return false;
@@ -676,7 +668,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
         if (available_coords.length < difference) {
             return false;
         }
-        let is_satisfied = false;
         for (const combination of getCombinations(difference, available_coords.length)) {
             for (const index of combination) {
                 const x = available_coords[index].x;
@@ -688,7 +679,6 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
             if (checkTreasureRooms(treasure_coords, diagram) &&
                 checkMonsters(monster_coords, diagram) &&
                 checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                is_satisfied = true;
                 if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
                     return true;
                 }
@@ -701,9 +691,7 @@ function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_i
                 cur_column_projection[y - 1] -= 1;
             }
         }
-        if (!is_satisfied) {
-            return false;
-        }
+        return false;
     }
     return false;
 }
