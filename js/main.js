@@ -508,194 +508,199 @@ function getCombinations(m, n) {
     })(0, []);
     return result;
 }
-function dfs(step, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords) {
-    if (isSatisfiedProjections(cur_row_projection, cur_column_projection, row_projection, column_projection)) {
-        return isSolved(treasure_coords, monster_coords, diagram);
-    }
-    for (const treasure_coord of treasure_coords) {
-        const x = treasure_coord.x;
-        const y = treasure_coord.y;
-        const hash_id = getHashId(x, y);
-        if (!(diagram[x][y] === TileType.TREASURE &&
-            !handled_treasure_ids.includes(hash_id))) {
-            continue;
+function dfs(diagram, row_projection, column_projection, treasure_coords, monster_coords) {
+    function dfs_(step, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords) {
+        if (isSatisfiedProjections(cur_row_projection, cur_column_projection, row_projection, column_projection)) {
+            return isSolved(treasure_coords, monster_coords, diagram);
         }
-        lroom_loop: for (const lt_coord of getTRoomLTCoords(x, y)) {
-            if (!isTRoomLTCoordAvailable(lt_coord.x, lt_coord.y)) {
-                continue lroom_loop;
+        for (const treasure_coord of treasure_coords) {
+            const x = treasure_coord.x;
+            const y = treasure_coord.y;
+            const hash_id = getHashId(x, y);
+            if (!(diagram[x][y] === TileType.TREASURE &&
+                !handled_treasure_ids.includes(hash_id))) {
+                continue;
             }
-            if (!isTRoomTilesAvailable(lt_coord.x, lt_coord.y, diagram)) {
-                continue lroom_loop;
-            }
-            const outer_tile_coords = getTRoomOuterTileCoords(lt_coord.x, lt_coord.y);
-            const empty_space_coords = outer_tile_coords.filter(tile => diagram[tile.x][tile.y] === TileType.EMPTY_SPACE);
-            for (const tile_coord of outer_tile_coords) {
-                if (diagram[tile_coord.x][tile_coord.y] !== TileType.WALL &&
-                    diagram[tile_coord.x][tile_coord.y] !== TileType.EMPTY_SPACE) {
+            lroom_loop: for (const lt_coord of getTRoomLTCoords(x, y)) {
+                if (!isTRoomLTCoordAvailable(lt_coord.x, lt_coord.y)) {
                     continue lroom_loop;
                 }
+                if (!isTRoomTilesAvailable(lt_coord.x, lt_coord.y, diagram)) {
+                    continue lroom_loop;
+                }
+                const outer_tile_coords = getTRoomOuterTileCoords(lt_coord.x, lt_coord.y);
+                const empty_space_coords = outer_tile_coords.filter(tile => diagram[tile.x][tile.y] === TileType.EMPTY_SPACE);
+                for (const tile_coord of outer_tile_coords) {
+                    if (diagram[tile_coord.x][tile_coord.y] !== TileType.WALL &&
+                        diagram[tile_coord.x][tile_coord.y] !== TileType.EMPTY_SPACE) {
+                        continue lroom_loop;
+                    }
+                }
+                if (empty_space_coords.length < 1) {
+                    return false;
+                }
+                else {
+                    for (let i = 0; i < empty_space_coords.length; i += 1) {
+                        let placed_indices = [];
+                        for (let j = 0; j < empty_space_coords.length; j += 1) {
+                            if (j === i) {
+                                continue;
+                            }
+                            const row_i = empty_space_coords[j].x - 1;
+                            const column_i = empty_space_coords[j].y - 1;
+                            if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
+                                break;
+                            }
+                            diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
+                            cur_row_projection[row_i] += 1;
+                            cur_column_projection[column_i] += 1;
+                            placed_indices.push(j);
+                        }
+                        if (placed_indices.length === empty_space_coords.length - 1 &&
+                            checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
+                            handled_treasure_ids.push(hash_id);
+                            treasure_room_lt_coords.push(lt_coord);
+                            if (dfs_(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords)) {
+                                return true;
+                            }
+                            handled_treasure_ids.pop();
+                            treasure_room_lt_coords.pop();
+                        }
+                        for (let k = 0; k < placed_indices.length; k += 1) {
+                            diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
+                            cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
+                            cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
+                        }
+                    }
+                }
             }
-            if (empty_space_coords.length < 1) {
+            return false;
+        }
+        if (handled_treasure_ids.length !== treasure_coords.length) {
+            return false;
+        }
+        for (const monster_coord of monster_coords) {
+            const x = monster_coord.x;
+            const y = monster_coord.y;
+            const hash_id = getHashId(x, y);
+            if (!(diagram[x][y] === TileType.MONSTER &&
+                !handled_monster_ids.includes(hash_id))) {
+                continue;
+            }
+            const outer_tile_coords = get4DirectionCoords(x, y);
+            const empty_space_coords = outer_tile_coords.filter(tile => diagram[tile.x][tile.y] === TileType.EMPTY_SPACE);
+            let number_of_walls = 0;
+            for (const tile_coord of outer_tile_coords) {
+                switch (diagram[tile_coord.x][tile_coord.y]) {
+                    case TileType.EMPTY_SPACE:
+                        break;
+                    case TileType.WALL:
+                        number_of_walls += 1;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+            if (number_of_walls >= 4) {
                 return false;
             }
-            else {
-                for (let i = 0; i < empty_space_coords.length; i += 1) {
-                    let placed_indices = [];
-                    for (let j = 0; j < empty_space_coords.length; j += 1) {
-                        if (j === i) {
-                            continue;
-                        }
-                        const row_i = empty_space_coords[j].x - 1;
-                        const column_i = empty_space_coords[j].y - 1;
-                        if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
-                            break;
-                        }
-                        diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
-                        cur_row_projection[row_i] += 1;
-                        cur_column_projection[column_i] += 1;
-                        placed_indices.push(j);
+            for (let i = 0; i < empty_space_coords.length; i += 1) {
+                let placed_indices = [];
+                for (let j = 0; j < empty_space_coords.length; j += 1) {
+                    if (j === i) {
+                        continue;
                     }
-                    if (placed_indices.length === empty_space_coords.length - 1 &&
-                        checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                        handled_treasure_ids.push(hash_id);
-                        treasure_room_lt_coords.push(lt_coord);
-                        if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
-                            return true;
-                        }
-                        handled_treasure_ids.pop();
-                        treasure_room_lt_coords.pop();
+                    const row_i = empty_space_coords[j].x - 1;
+                    const column_i = empty_space_coords[j].y - 1;
+                    if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
+                        break;
                     }
-                    for (let k = 0; k < placed_indices.length; k += 1) {
-                        diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
-                        cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
-                        cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
+                    diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
+                    cur_row_projection[row_i] += 1;
+                    cur_column_projection[column_i] += 1;
+                    placed_indices.push(j);
+                }
+                if (placed_indices.length === empty_space_coords.length - 1 &&
+                    checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
+                    handled_monster_ids.push(hash_id);
+                    if (dfs_(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords)) {
+                        return true;
                     }
+                    handled_monster_ids.pop();
+                }
+                for (let k = 0; k < placed_indices.length; k += 1) {
+                    diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
+                    cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
+                    cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
                 }
             }
-        }
-        return false;
-    }
-    if (handled_treasure_ids.length !== treasure_coords.length) {
-        return false;
-    }
-    for (const monster_coord of monster_coords) {
-        const x = monster_coord.x;
-        const y = monster_coord.y;
-        const hash_id = getHashId(x, y);
-        if (!(diagram[x][y] === TileType.MONSTER &&
-            !handled_monster_ids.includes(hash_id))) {
-            continue;
-        }
-        const outer_tile_coords = get4DirectionCoords(x, y);
-        const empty_space_coords = outer_tile_coords.filter(tile => diagram[tile.x][tile.y] === TileType.EMPTY_SPACE);
-        let number_of_walls = 0;
-        for (const tile_coord of outer_tile_coords) {
-            switch (diagram[tile_coord.x][tile_coord.y]) {
-                case TileType.EMPTY_SPACE:
-                    break;
-                case TileType.WALL:
-                    number_of_walls += 1;
-                    break;
-                default:
-                    return false;
-            }
-        }
-        if (number_of_walls >= 4) {
             return false;
         }
-        for (let i = 0; i < empty_space_coords.length; i += 1) {
-            let placed_indices = [];
-            for (let j = 0; j < empty_space_coords.length; j += 1) {
-                if (j === i) {
+        if (handled_monster_ids.length !== monster_coords.length) {
+            return false;
+        }
+        for (let row_i = 0; row_i < cur_row_projection.length; row_i += 1) {
+            const difference = row_projection[row_i] - cur_row_projection[row_i];
+            if (difference <= 0) {
+                continue;
+            }
+            const available_coords = [];
+            for (let column_i = 0; column_i < cur_column_projection.length; column_i += 1) {
+                if (cur_column_projection[column_i] >= column_projection[column_i]) {
                     continue;
                 }
-                const row_i = empty_space_coords[j].x - 1;
-                const column_i = empty_space_coords[j].y - 1;
-                if (!isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection)) {
-                    break;
+                const x = row_i + 1;
+                const y = column_i + 1;
+                if (!(diagram[x][y] === TileType.EMPTY_SPACE &&
+                    !isContainedByTRoom(x, y, treasure_room_lt_coords) &&
+                    isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection))) {
+                    continue;
                 }
-                diagram[empty_space_coords[j].x][empty_space_coords[j].y] = TileType.WALL;
+                diagram[x][y] = TileType.WALL;
                 cur_row_projection[row_i] += 1;
                 cur_column_projection[column_i] += 1;
-                placed_indices.push(j);
-            }
-            if (placed_indices.length === empty_space_coords.length - 1 &&
-                checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                handled_monster_ids.push(hash_id);
-                if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
-                    return true;
+                if (checkTreasureRooms(treasure_coords, diagram) &&
+                    checkMonsters(monster_coords, diagram) &&
+                    checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
+                    available_coords.push({ x: x, y: y });
                 }
-                handled_monster_ids.pop();
+                diagram[x][y] = TileType.EMPTY_SPACE;
+                cur_row_projection[row_i] -= 1;
+                cur_column_projection[column_i] -= 1;
             }
-            for (let k = 0; k < placed_indices.length; k += 1) {
-                diagram[empty_space_coords[placed_indices[k]].x][empty_space_coords[placed_indices[k]].y] = TileType.EMPTY_SPACE;
-                cur_row_projection[empty_space_coords[placed_indices[k]].x - 1] -= 1;
-                cur_column_projection[empty_space_coords[placed_indices[k]].y - 1] -= 1;
+            if (available_coords.length < difference) {
+                return false;
             }
-        }
-        return false;
-    }
-    if (handled_monster_ids.length !== monster_coords.length) {
-        return false;
-    }
-    for (let row_i = 0; row_i < cur_row_projection.length; row_i += 1) {
-        const difference = row_projection[row_i] - cur_row_projection[row_i];
-        if (difference <= 0) {
-            continue;
-        }
-        const available_coords = [];
-        for (let column_i = 0; column_i < cur_column_projection.length; column_i += 1) {
-            if (cur_column_projection[column_i] >= column_projection[column_i]) {
-                continue;
+            for (const combination of getCombinations(difference, available_coords.length)) {
+                for (const index of combination) {
+                    const x = available_coords[index].x;
+                    const y = available_coords[index].y;
+                    diagram[x][y] = TileType.WALL;
+                    cur_row_projection[x - 1] += 1;
+                    cur_column_projection[y - 1] += 1;
+                }
+                if (checkTreasureRooms(treasure_coords, diagram) &&
+                    checkMonsters(monster_coords, diagram) &&
+                    checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
+                    if (dfs_(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords)) {
+                        return true;
+                    }
+                }
+                for (const index of combination) {
+                    const x = available_coords[index].x;
+                    const y = available_coords[index].y;
+                    diagram[x][y] = TileType.EMPTY_SPACE;
+                    cur_row_projection[x - 1] -= 1;
+                    cur_column_projection[y - 1] -= 1;
+                }
             }
-            const x = row_i + 1;
-            const y = column_i + 1;
-            if (!(diagram[x][y] === TileType.EMPTY_SPACE &&
-                !isContainedByTRoom(x, y, treasure_room_lt_coords) &&
-                isTilePlacable(row_i, column_i, cur_row_projection, cur_column_projection, row_projection, column_projection))) {
-                continue;
-            }
-            diagram[x][y] = TileType.WALL;
-            cur_row_projection[row_i] += 1;
-            cur_column_projection[column_i] += 1;
-            if (checkTreasureRooms(treasure_coords, diagram) &&
-                checkMonsters(monster_coords, diagram) &&
-                checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                available_coords.push({ x: x, y: y });
-            }
-            diagram[x][y] = TileType.EMPTY_SPACE;
-            cur_row_projection[row_i] -= 1;
-            cur_column_projection[column_i] -= 1;
-        }
-        if (available_coords.length < difference) {
             return false;
         }
-        for (const combination of getCombinations(difference, available_coords.length)) {
-            for (const index of combination) {
-                const x = available_coords[index].x;
-                const y = available_coords[index].y;
-                diagram[x][y] = TileType.WALL;
-                cur_row_projection[x - 1] += 1;
-                cur_column_projection[y - 1] += 1;
-            }
-            if (checkTreasureRooms(treasure_coords, diagram) &&
-                checkMonsters(monster_coords, diagram) &&
-                checkTreasuresAndMonstersConnectivity(treasure_coords, monster_coords, diagram)) {
-                if (dfs(step + 1, cur_row_projection, cur_column_projection, handled_treasure_ids, handled_monster_ids, treasure_room_lt_coords, diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
-                    return true;
-                }
-            }
-            for (const index of combination) {
-                const x = available_coords[index].x;
-                const y = available_coords[index].y;
-                diagram[x][y] = TileType.EMPTY_SPACE;
-                cur_row_projection[x - 1] -= 1;
-                cur_column_projection[y - 1] -= 1;
-            }
-        }
         return false;
     }
-    return false;
+    const cur_row_projection = [0, 0, 0, 0, 0, 0, 0, 0];
+    const cur_column_projection = [0, 0, 0, 0, 0, 0, 0, 0];
+    return dfs_(0, cur_row_projection, cur_column_projection, [], [], []);
 }
 function getTreasureAndMonsterCoords(diagram) {
     const treasure_coords = [];
@@ -737,10 +742,8 @@ function getFormattedTime(ms) {
     const [row_projection, column_projection, raw_diagram] = parsing_result;
     const diagram = augmentRawDiagram(raw_diagram);
     const [treasure_coords, monster_coords] = getTreasureAndMonsterCoords(diagram);
-    const cur_row_projection = [0, 0, 0, 0, 0, 0, 0, 0];
-    const cur_column_projection = [0, 0, 0, 0, 0, 0, 0, 0];
     const start_time = (new Date()).getTime();
-    if (!dfs(0, cur_row_projection, cur_column_projection, [], [], [], diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
+    if (!dfs(diagram, row_projection, column_projection, treasure_coords, monster_coords)) {
         console.log(`@main> (${getFormattedTime(getElapsedTime(start_time))}) Failed to find a solution.`);
         return;
     }
